@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voyage Planner - Combined Step</title>
+  <style>
+    body { font-family: Arial; padding: 20px; max-width: 700px; margin: auto; }
+    table, th, td { border: 1px solid #aaa; border-collapse: collapse; padding: 8px; }
+    th { background: #f2f2f2; }
+    input[type=number], input[type=text], input[type=datetime-local] { width: 100px; }
+    input[type=text] { width: 150px; }
+    button { margin-top: 15px; padding: 8px 15px; }
+  </style>
+</head>
+<body>
+
+<h2>Voyage Planner - Distance & ETA Calculator</h2>
+
+<label>Start Date & Time:</label>
+<input type="datetime-local" id="startDate" /><br /><br />
+
+<h3>Ports & Distances</h3>
+<p>Add ports below, then enter distance, speed, and port stay per leg:</p>
+
+<input type="text" id="portInput" placeholder="Enter port name" />
+<button onclick="addPort()">Add Port</button>
+
+<table id="voyageTable" style="margin-top: 15px; width: 100%;">
+  <thead>
+    <tr>
+      <th>From Port</th>
+      <th>To Port</th>
+      <th>Distance (NM)</th>
+      <th>Speed (knots)</th>
+      <th>Port Stay (hrs)</th>
+      <th>ETA (hrs)</th>
+      <th>Arrival Date/Time</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<button onclick="calculateETA()">Calculate ETA</button>
+
+<script>
+  let ports = [];
+
+  function addPort() {
+    const input = document.getElementById('portInput');
+    const portName = input.value.trim();
+    if (!portName) return alert('Enter port name');
+    ports.push(portName);
+    input.value = '';
+    renderTable();
+  }
+
+  function deletePort(index) {
+    ports.splice(index, 1);
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbody = document.querySelector('#voyageTable tbody');
+    tbody.innerHTML = '';
+
+    if (ports.length < 2) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Add at least 2 ports to calculate voyage</td></tr>`;
+      return;
+    }
+
+    for (let i = 0; i < ports.length - 1; i++) {
+      const fromPort = ports[i];
+      const toPort = ports[i + 1];
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${fromPort}</td>
+        <td>${toPort}</td>
+        <td><input type="number" id="dist-${i}" min="0" placeholder="NM" required></td>
+        <td><input type="number" id="speed-${i}" min="0" value="14" required></td>
+        <td><input type="number" id="stay-${i+1}" min="0" value="6" required></td>
+        <td id="eta-${i}">-</td>
+        <td id="arr-${i+1}">-</td>
+        <td><button onclick="removePort(${i + 1})">Delete To Port</button></td>
+      `;
+      tbody.appendChild(row);
+    }
+  }
+
+  function removePort(index) {
+    if (index === 0) return alert('Cannot remove first port this way');
+    ports.splice(index, 1);
+    renderTable();
+  }
+
+  function calculateETA() {
+    if (ports.length < 2) return alert('Add at least 2 ports');
+
+    const startDateStr = document.getElementById('startDate').value;
+    if (!startDateStr) return alert('Enter voyage start date and time');
+
+    const startDate = new Date(startDateStr);
+    if (isNaN(startDate)) return alert('Invalid start date/time');
+
+    let currentTime = new Date(startDate);
+
+    for (let i = 0; i < ports.length - 1; i++) {
+      const distInput = document.getElementById(`dist-${i}`);
+      const speedInput = document.getElementById(`speed-${i}`);
+      const stayInput = document.getElementById(`stay-${i+1}`);
+
+      const dist = parseFloat(distInput.value);
+      const speed = parseFloat(speedInput.value);
+      const stay = parseFloat(stayInput.value);
+
+      if (isNaN(dist) || dist <= 0) return alert(`Enter valid distance for ${ports[i]} → ${ports[i+1]}`);
+      if (isNaN(speed) || speed <= 0) return alert(`Enter valid speed for leg ${i+1}`);
+      if (isNaN(stay) || stay < 0) return alert(`Enter valid port stay for ${ports[i+1]}`);
+
+      const etaHours = dist / speed;
+      document.getElementById(`eta-${i}`).textContent = etaHours.toFixed(2);
+
+      // Arrival date/time
+      currentTime = new Date(currentTime.getTime() + etaHours * 3600000);
+      document.getElementById(`arr-${i+1}`).textContent = currentTime.toLocaleString();
+
+      // Add port stay
+      currentTime = new Date(currentTime.getTime() + stay * 3600000);
+    }
+  }
+
+  renderTable();
+</script>
+
+</body>
+</html>
